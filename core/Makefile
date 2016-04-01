@@ -980,7 +980,7 @@ BOOTLOADER_PATH := bootable/bootloader/uboot-imx/
 BOOTLOADER_CONFIG_FILE := $(BOOTLOADER_PATH)/include/config.h
 
 bootloader: $(TARGET_BOOTLOADER_IMAGE)
-
+.PHONY: $(TARGET_BOOTLOADER_IMAGE)
 $(TARGET_BOOTLOADER_IMAGE):
 	for ubootplat in $(TARGET_BOOTLOADER_CONFIG); do \
 		UBOOT_PLATFORM=`echo $$ubootplat | cut -d':' -f1`; \
