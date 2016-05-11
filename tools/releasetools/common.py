@@ -1025,11 +1025,17 @@ class DeviceSpecificParams(object):
     verification is complete)."""
     return self._DoCall("IncrementalOTA_InstallBegin")
 
-  def IncrementalOTA_InstallEnd(self):
+  def IncrementalOTA_InstallEnd_Ext4(self):
     """Called at the end of incremental OTA installation; typically
     this is used to install the image for the device's baseband
     processor."""
-    return self._DoCall("IncrementalOTA_InstallEnd")
+    return self._DoCall("IncrementalOTA_InstallEnd_Ext4")
+
+  def IncrementalOTA_InstallEnd_Ubifs(self):
+    """Called at the end of incremental OTA installation; typically
+    this is used to install the image for the device's baseband
+    processor."""
+    return self._DoCall("IncrementalOTA_InstallEnd_Ubifs")
 
 class File(object):
   def __init__(self, name, data):

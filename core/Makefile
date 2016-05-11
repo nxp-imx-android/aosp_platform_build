@@ -1756,6 +1756,37 @@ endif    # TARGET_DEVICE != generic*
 endif    # TARGET_PRODUCT != sdk
 
 # -----------------------------------------------------------------
+# Target file  package
+name := $(TARGET_PRODUCT)
+ifeq ($(TARGET_BUILD_TYPE),debug)
+  name := $(name)_debug
+endif
+  name := $(name)-target_files-$(FILE_NAME_TAG)
+
+
+INSTALLED_TARGET_FILES_PACKAGE :=$(PRODUCT_OUT)/$(name).zip
+$(INSTALLED_TARGET_FILES_PACKAGE): $(BUILT_TARGET_FILES_PACKAGE) $(DISTTOOLS)
+	@echo "Target files package: $@"
+	$(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH MKBOOTIMG=$(MKBOOTIMG) \
+	cp $(BUILT_TARGET_FILES_PACKAGE) $@
+
+targetfilegenerate: $(INSTALLED_TARGET_FILES_PACKAGE)
+
+INSTALLED_TARGET_FILES_ALL_PACKAGE :=$(PRODUCT_OUT)/target_file_all
+$(INSTALLED_TARGET_FILES_ALL_PACKAGE): $(INSTALLED_TARGET_FILES_PACKAGE)
+	@echo "Make all target files for different soc" > $@
+	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
+		export DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
+		export BOARD_KERNEL_DTS="$(PRODUCT_OUT)/$$DTS_BOARD" ; \
+		make targetfilegenerate; \
+		OTA_PACKAGE_BOARD=$(patsubst %.zip,%-$$DTS_PLATFORM.zip,$(INSTALLED_TARGET_FILES_PACKAGE)); \
+		cp -f $(INSTALLED_TARGET_FILES_PACKAGE) $$OTA_PACKAGE_BOARD; \
+		mv $$OTA_PACKAGE_BOARD $(DIST_DIR)/; \
+	done
+
+
+# -----------------------------------------------------------------
 # The update package
 
 name := $(TARGET_PRODUCT)

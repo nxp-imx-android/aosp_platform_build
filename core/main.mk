@@ -950,6 +950,7 @@ else # TARGET_BUILD_APPS
     $(BUILT_TARGET_FILES_PACKAGE) \
     $(INSTALLED_ANDROID_INFO_TXT_TARGET) \
     $(INSTALLED_RAMDISK_TARGET) \
+    $(INSTALLED_TARGET_FILES_ALL_PACKAGE) \
    )
 
   # Put a copy of the radio/bootloader files in the dist dir.
