@@ -1008,6 +1008,8 @@ define build-recoveryimage-target
   $(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/sepolicy
   $(hide) cp -f $(recovery_sepolicy) $(TARGET_RECOVERY_ROOT_OUT)/sepolicy
   $(hide) cp $(TARGET_ROOT_OUT)/init.recovery.*.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
+  $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).sd.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
+  $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).emmc.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/res
   $(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)/res/*
   $(hide) cp -rf $(recovery_resources_common)/* $(TARGET_RECOVERY_ROOT_OUT)/res
@@ -1561,6 +1563,40 @@ $(call dist-for-goals,userdatatarball,$(INSTALLED_USERDATATARBALL_TARGET))
 userdatatarball-nodeps: $(FS_GET_STATS)
 	$(build-userdatatarball-target)
 
+
+# -----------------------------------------------------------------
+# partition table image
+ifdef BOARD_BPT_INPUT_FILES
+
+BUILT_BPTIMAGE_TARGET := $(PRODUCT_OUT)/partition-table.img
+BUILT_BPTJSON_TARGET := $(PRODUCT_OUT)/partition-table.bpt
+
+INTERNAL_BVBTOOL_MAKE_TABLE_ARGS := \
+    --output_gpt $(BUILT_BPTIMAGE_TARGET) \
+    --output_json $(BUILT_BPTJSON_TARGET) \
+    $(foreach file, $(BOARD_BPT_INPUT_FILES), --input $(file))
+
+ifdef BOARD_BPT_DISK_SIZE
+INTERNAL_BVBTOOL_MAKE_TABLE_ARGS += --disk_size $(BOARD_BPT_DISK_SIZE)
+endif
+
+define build-bptimage-target
+    $(call pretty,"Target partition table image: $(INSTALLED_BPTIMAGE_TARGET)")
+    $(hide) $(BPTTOOL) make_table $(INTERNAL_BVBTOOL_MAKE_TABLE_ARGS) $(BOARD_BPT_MAKE_TABLE_ARGS)
+endef
+
+INSTALLED_BPTIMAGE_TARGET := $(BUILT_BPTIMAGE_TARGET)
+$(BUILT_BPTJSON_TARGET): $(INSTALLED_BPTIMAGE_TARGET)
+	$(hide) touch -c $(BUILT_BPTJSON_TARGET)
+
+$(INSTALLED_BPTIMAGE_TARGET): $(BPTTOOL) $(BOARD_BPT_INPUT_FILES)
+    $(build-bptimage-target)
+
+.PHONY: bptimage-nodeps
+bptimage-nodeps:
+	$(build-bptimage-target)
+
+endif # BOARD_BPT_INPUT_FILES
 
 # -----------------------------------------------------------------
 # cache partition image

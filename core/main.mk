@@ -957,6 +957,7 @@ droidcore: kernelimage \
 	bootloader \
 	files \
 	systemimage \
+	bptimage-nodeps \
 	$(INSTALLED_BOOTIMAGE_TARGET) \
 	$(INSTALLED_RECOVERYIMAGE_TARGET) \
 	$(INSTALLED_USERDATAIMAGE_TARGET) \

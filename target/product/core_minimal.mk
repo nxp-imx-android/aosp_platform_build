@@ -113,6 +113,7 @@ PRODUCT_PACKAGES += \
     make_ext4fs \
     fsck.f2fs \
     make_f2fs \
+    bpttool \
 
 PRODUCT_DEFAULT_PROPERTY_OVERRIDES += \
     ro.zygote=zygote32
