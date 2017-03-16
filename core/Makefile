@@ -1596,6 +1596,9 @@ $(INSTALLED_BPTIMAGE_TARGET): $(BPTTOOL) $(BOARD_BPT_INPUT_FILES)
 bptimage-nodeps:
 	$(build-bptimage-target)
 
+else # BOARD_BPT_INPUT_FILES
+.PHONY: bptimage-nodeps
+
 endif # BOARD_BPT_INPUT_FILES
 
 # -----------------------------------------------------------------
