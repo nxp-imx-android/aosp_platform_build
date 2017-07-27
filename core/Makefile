@@ -555,7 +555,15 @@ event-log-tags: $(event_log_tags_file)
 
 ALL_DEFAULT_INSTALLED_MODULES += $(event_log_tags_file)
 
+KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
 
+$(KERNEL_OUT):
+	mkdir -p $@
+
+BOOTLOADER_OUT := $(TARGET_OUT_INTERMEDIATES)/BOOTLOADER_OBJ
+
+$(BOOTLOADER_OUT):
+	mkdir -p $@
 # #################################################################
 # Targets for boot/OS images
 # #################################################################
@@ -571,7 +579,7 @@ else
   INSTALLED_2NDBOOTLOADER_TARGET :=
 endif # TARGET_NO_BOOTLOADER
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
-  INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
+  INSTALLED_KERNEL_TARGET := $(KERNEL_OUT)/kernel_img
 else
   INSTALLED_KERNEL_TARGET :=
 endif
@@ -678,7 +686,7 @@ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES) $(BOOT_S
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
 		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
 		BOOT_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
-		$(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --second $(PRODUCT_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $@; \
+		$(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --second $(KERNEL_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $@; \
 		$(BOOT_SIGNER) /boot $@ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $@; \
 		$(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE)); \
 		cp -f $@ $$BOOT_IMAGE_BOARD; \
@@ -714,7 +722,7 @@ $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_FILES)
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
 		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
 		BOOT_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
-		$(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --second $(PRODUCT_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $@; \
+		$(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --second $(KERNEL_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $@; \
 		$(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE)); \
 		cp -f $@ $$BOOT_IMAGE_BOARD; \
 	done
@@ -1279,7 +1287,7 @@ define build-recoveryimage-target
     DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
     DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
     RECOVERY_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$(1)); \
-    $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) --second $(PRODUCT_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $(1); \
+    $(MKBOOTIMG) $(INTERNAL_RECOVERYIMAGE_ARGS) --second $(KERNEL_OUT)/$$DTS_BOARD $(BOARD_MKBOOTIMG_ARGS) --output $(1); \
     if [ $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_SUPPORTS_VERITY) = true ]; then \
        $(BOOT_SIGNER) /recovery $(1) $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).pk8 $(PRODUCTS.$(INTERNAL_PRODUCT).PRODUCT_VERITY_SIGNING_KEY).x509.pem $(1); \
     fi;\
@@ -1358,18 +1366,21 @@ HOST_PROCESSOR := $(shell cat /proc/cpuinfo | grep processor | wc -l)
 TARGET_BOOTLOADER_IMAGE := $(PRODUCT_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX)
 
 BOOTLOADER_PATH := bootable/bootloader/uboot-imx/
-BOOTLOADER_CONFIG_FILE := $(BOOTLOADER_PATH)/include/config.h
+TARGET_BOOTLOADER_CONFIGURE := $(BOOTLOADER_OUT)/.config
+
 
 bootloader: $(TARGET_BOOTLOADER_IMAGE)
 .PHONY: $(TARGET_BOOTLOADER_IMAGE)
-$(TARGET_BOOTLOADER_IMAGE):
+$(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT)
 	for ubootplat in $(TARGET_BOOTLOADER_CONFIG); do \
 		UBOOT_PLATFORM=`echo $$ubootplat | cut -d':' -f1`; \
 		UBOOT_CONFIG=`echo $$ubootplat | cut -d':' -f2`; \
 		$(MAKE) -C bootable/bootloader/uboot-imx/ distclean $(BOOTLOADER_ENV); \
 		$(MAKE) -C bootable/bootloader/uboot-imx/ $$UBOOT_CONFIG $(BOOTLOADER_ENV); \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ $(BOOTLOADER_ENV); \
-		install -D bootable/bootloader/uboot-imx/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX) $(PRODUCT_OUT)/u-boot-$$UBOOT_PLATFORM.imx; \
+		install -D $(BOOTLOADER_PATH)/.config $(TARGET_BOOTLOADER_CONFIGURE); \
+		$(MAKE) -C bootable/bootloader/uboot-imx/ mrproper $(BOOTLOADER_ENV); \
+		$(MAKE) -C bootable/bootloader/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV); \
+		install -D $(BOOTLOADER_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX) $(PRODUCT_OUT)/u-boot-$$UBOOT_PLATFORM.imx; \
 		if [ $(UBOOT_POST_PROCESS) = true ]; then \
 		echo "build post process" ; \
 		$(call build_uboot, $(TARGET_BOOTLOADER_POSTFIX), $$UBOOT_PLATFORM) \
@@ -1383,19 +1394,18 @@ endif
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
 ifeq ($(TARGET_ARCH),arm64)
 KERNEL_CROSS_TOOLCHAIN := `pwd`/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-KERNEL_IMAGE_NAME    := kernel_imx/arch/$(TARGET_ARCH)/boot/Image
+KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/Image
 else
 KERNEL_CROSS_TOOLCHAIN := `pwd`/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-KERNEL_IMAGE_NAME    := kernel_imx/arch/$(TARGET_ARCH)/boot/zImage
+KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/zImage
 endif
 KERNEL_CFLAGS := KCFLAGS=-mno-android
 KERNEL_ENV := ARCH=$(TARGET_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_TOOLCHAIN) LOADADDR=$(LOAD_KERNEL_ENTRY) $(KERNEL_CFLAGS)
 HOST_PROCESSOR := $(shell cat /proc/cpuinfo | grep processor | wc -l)
-INSTALLED_KERNEL_TARGET := $(PRODUCT_OUT)/kernel
-TARGET_PREBUILT_KERNEL := $(PRODUCT_OUT)/kernel
+INSTALLED_KERNEL_TARGET := $(KERNEL_OUT)/kernel_img
+TARGET_PREBUILT_KERNEL := $(KERNEL_OUT)/kernel_img
 KERNEL_CONFIGURE := kernel_imx/.config
-TARGET_KERNEL_CONFIGURE := $(PRODUCT_OUT)/.config
-KERNEL_OUT := $(TARGET_OUT_INTERMEDIATES)/KERNEL_OBJ
+TARGET_KERNEL_CONFIGURE := $(KERNEL_OUT)/.config
 
 
 .PHONY: $(TARGET_PREBUILT_KERNEL)
@@ -1412,14 +1422,15 @@ DTS_ADDITIONAL_PATH := freescale
 else
 DTS_ADDITIONAL_PATH :=
 endif
-$(TARGET_PREBUILT_KERNEL): $(TARGET_KERNEL_CONFIGURE)
-	$(MAKE) -C kernel_imx -j$(HOST_PROCESSOR) $(KERNEL_ENV)
-	$(MAKE) -C kernel_imx dtbs $(KERNEL_ENV)
-	install -D $(KERNEL_IMAGE_NAME)  $(PRODUCT_OUT)/kernel
+$(TARGET_PREBUILT_KERNEL): $(TARGET_KERNEL_CONFIGURE) | $(KERNEL_OUT)
+	$(MAKE) -C kernel_imx mrproper
+	$(MAKE) -C kernel_imx O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
+	$(MAKE) -C kernel_imx O=$(realpath $(KERNEL_OUT)) dtbs $(KERNEL_ENV)
+	install -D $(KERNEL_IMAGE_NAME)  $(KERNEL_OUT)/kernel_img
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
 		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
-		install -D kernel_imx/arch/$(TARGET_ARCH)/boot/dts/$(DTS_ADDITIONAL_PATH)/$$DTS_BOARD $(PRODUCT_OUT)/$$DTS_BOARD; \
+		install -D kernel_imx/arch/$(TARGET_ARCH)/boot/dts/$(DTS_ADDITIONAL_PATH)/$$DTS_BOARD $(KERNEL_OUT)/$$DTS_BOARD; \
 	done
 else
 kernelimage:
