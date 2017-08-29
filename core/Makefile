@@ -1847,6 +1847,13 @@ endif
 define build-bptimage-target
   $(call pretty,"Target partition table image: $(INSTALLED_BPTIMAGE_TARGET)")
   $(hide) $(BPTTOOL) make_table $(INTERNAL_BVBTOOL_MAKE_TABLE_ARGS) $(BOARD_BPT_MAKE_TABLE_ARGS)
+  for addition_partition in $(ADDITION_BPT_PARTITION); do \
+    PARTITION_OUT_IMAGE=`echo $$addition_partition | cut -d":" -f1`; \
+    PARTITION_INPUT_BPT=`echo $$addition_partition | cut -d":" -f2`; \
+    $(BPTTOOL) make_table --output_gpt $(PRODUCT_OUT)/$$PARTITION_OUT_IMAGE.img \
+    --output_json $(PRODUCT_OUT)/$$PARTITION_OUT_IMAGE.bpt --input $$PARTITION_INPUT_BPT \
+    $(BOARD_BPT_MAKE_TABLE_ARGS); \
+   done
 endef
 
 INSTALLED_BPTIMAGE_TARGET := $(BUILT_BPTIMAGE_TARGET)
