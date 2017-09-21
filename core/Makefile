@@ -2507,6 +2507,9 @@ ifdef BOARD_KERNEL_PAGESIZE
 	$(hide) echo "$(BOARD_KERNEL_PAGESIZE)" > $(zip_root)/BOOT/pagesize
 endif
 endif # BOARD_USES_RECOVERY_AS_BOOT
+ifdef BOARD_KERNEL_DTS
+	$(hide) echo "$(BOARD_KERNEL_DTS)" > $(zip_root)/BOOT/dtb
+endif
 	$(hide) $(foreach t,$(INSTALLED_RADIOIMAGE_TARGET),\
 	            mkdir -p $(zip_root)/RADIO; \
 	            cp $(t) $(zip_root)/RADIO/$(notdir $(t));)
@@ -2774,8 +2777,19 @@ $(INTERNAL_OTA_PACKAGE_TARGET): $(BUILT_TARGET_FILES_PACKAGE) \
 	   $(if $(OEM_OTA_CONFIG), -o $(OEM_OTA_CONFIG)) \
 	   $(BUILT_TARGET_FILES_PACKAGE) $@
 
+otagenerate: $(INTERNAL_OTA_PACKAGE_TARGET)
+
 .PHONY: otapackage
-otapackage: $(INTERNAL_OTA_PACKAGE_TARGET)
+otapackage:
+	@echo "Package OTA Start...: $@"
+	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
+		export DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
+		export BOARD_KERNEL_DTS="$(KERNEL_OUT)/$$DTS_BOARD" ; \
+		make otagenerate; \
+		OTA_PACKAGE_BOARD=$(patsubst %.zip,%-$$DTS_PLATFORM.zip,$(INTERNAL_OTA_PACKAGE_TARGET)); \
+		cp -f $(INTERNAL_OTA_PACKAGE_TARGET) $$OTA_PACKAGE_BOARD; \
+	done
 
 endif    # build_ota_package
 
