@@ -1367,9 +1367,13 @@ TARGET_BOOTLOADER_IMAGE := $(PRODUCT_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_B
 
 BOOTLOADER_PATH := $(UBOOT_IMX_PATH)/uboot-imx/
 
+ifeq ($(PRODUCT_IMX_DRM),true)
+TARGET_OPTEE := BUILD_OPTEE_OS
+endif
+
 bootloader: $(TARGET_BOOTLOADER_IMAGE)
 .PHONY: $(TARGET_BOOTLOADER_IMAGE)
-$(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT)
+$(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT) $(TARGET_OPTEE)
 	for ubootplat in $(TARGET_BOOTLOADER_CONFIG); do \
 		UBOOT_PLATFORM=`echo $$ubootplat | cut -d':' -f1`; \
 		UBOOT_CONFIG=`echo $$ubootplat | cut -d':' -f2`; \
@@ -1381,6 +1385,10 @@ $(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT)
 		if [ $(UBOOT_POST_PROCESS) = true ]; then \
 		echo "build post process" ; \
 		$(call build_uboot, $(TARGET_BOOTLOADER_POSTFIX), $$UBOOT_PLATFORM) \
+		fi; \
+		if [ $(PRODUCT_IMX_DRM) = true ]; then \
+		echo "build post process with tee" ; \
+		$(call build_uboot_w_tee,  $(TARGET_BOOTLOADER_POSTFIX), $$UBOOT_PLATFORM) \
 		fi \
 	done
 else
