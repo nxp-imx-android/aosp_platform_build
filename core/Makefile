@@ -2095,9 +2095,6 @@ endef
 
 ifdef BOARD_AVB_BOOT_KEY_PATH
 $(eval $(call check-and-set-avb-chain-args,BOOT))
-else
-INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS += \
-    --include_descriptors_from_image $(INSTALLED_BOOTIMAGE_TARGET)
 endif
 
 ifdef BOARD_AVB_SYSTEM_KEY_PATH
@@ -2179,7 +2176,16 @@ endef
 
 INSTALLED_VBMETAIMAGE_TARGET := $(BUILT_VBMETAIMAGE_TARGET)
 $(INSTALLED_VBMETAIMAGE_TARGET): $(AVBTOOL) $(INSTALLED_BOOTIMAGE_TARGET) $(INSTALLED_SYSTEMIMAGE) $(INSTALLED_VENDORIMAGE_TARGET) $(INSTALLED_DTBOIMAGE_TARGET) $(BOARD_AVB_KEY_PATH)
-	$(build-vbmetaimage-target)
+	$(call pretty,"Target vbmeta image: $@")
+	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
+		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		VBMETA_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
+		$(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		  $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		  $(INTERNAL_AVB_SIGNING_ARGS) \
+		  $(BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		  --output $$VBMETA_IMAGE_BOARD ;\
+	done
 
 .PHONY: vbmetaimage-nodeps
 vbmetaimage-nodeps:
