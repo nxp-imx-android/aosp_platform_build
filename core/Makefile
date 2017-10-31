@@ -1287,7 +1287,8 @@ define build-recoveryimage-target
           --image $(1) \
           --partition_size $(BOARD_BOOTIMAGE_PARTITION_SIZE) \
           --partition_name boot $(INTERNAL_AVB_BOOT_SIGNING_ARGS) \
-          $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS)); \
+          $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS), \
+       @echo "BOARD_USES_RECOVERY_AS_BOOT and BOARD_AVB_ENABLE are not enabled" ); \
     $(if $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)), \
       $(hide) $(call assert-max-image-size,$(1),$(BOARD_BOOTIMAGE_PARTITION_SIZE)), \
       $(hide) $(call assert-max-image-size,$(1),$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))); \
