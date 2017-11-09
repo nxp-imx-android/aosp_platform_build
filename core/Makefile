@@ -2794,6 +2794,7 @@ otapackage:
 		export DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
 		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
 		export BOARD_KERNEL_DTS="$(KERNEL_OUT)/$$DTS_BOARD" ; \
+		rm out/.lock ; \
 		make otagenerate; \
 		OTA_PACKAGE_BOARD=$(patsubst %.zip,%-$$DTS_PLATFORM.zip,$(INTERNAL_OTA_PACKAGE_TARGET)); \
 		cp -f $(INTERNAL_OTA_PACKAGE_TARGET) $$OTA_PACKAGE_BOARD; \
