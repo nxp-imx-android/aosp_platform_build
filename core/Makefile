@@ -1379,7 +1379,7 @@ $(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT)
 		$(MAKE) -C bootable/bootloader/uboot-imx/ $$UBOOT_CONFIG $(BOOTLOADER_ENV); \
 		install -D $(BOOTLOADER_PATH)/.config $(TARGET_BOOTLOADER_CONFIGURE); \
 		$(MAKE) -C bootable/bootloader/uboot-imx/ mrproper $(BOOTLOADER_ENV); \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV); \
+		$(MAKE) -C bootable/bootloader/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV) || exit 1; \
 		install -D $(BOOTLOADER_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX) $(PRODUCT_OUT)/u-boot-$$UBOOT_PLATFORM.imx; \
 		if [ $(UBOOT_POST_PROCESS) = true ]; then \
 		echo "build post process" ; \
