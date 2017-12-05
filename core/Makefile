@@ -1365,7 +1365,7 @@ BOOTLOADER_ENV := CROSS_COMPILE=$(BOOTLOADER_CROSS_TOOLCHAIN)
 HOST_PROCESSOR := $(shell cat /proc/cpuinfo | grep processor | wc -l)
 TARGET_BOOTLOADER_IMAGE := $(PRODUCT_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX)
 
-BOOTLOADER_PATH := bootable/bootloader/uboot-imx/
+BOOTLOADER_PATH := $(UBOOT_IMX_PATH)/uboot-imx/
 
 bootloader: $(TARGET_BOOTLOADER_IMAGE)
 .PHONY: $(TARGET_BOOTLOADER_IMAGE)
@@ -1373,10 +1373,10 @@ $(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT)
 	for ubootplat in $(TARGET_BOOTLOADER_CONFIG); do \
 		UBOOT_PLATFORM=`echo $$ubootplat | cut -d':' -f1`; \
 		UBOOT_CONFIG=`echo $$ubootplat | cut -d':' -f2`; \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ distclean $(BOOTLOADER_ENV); \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $$UBOOT_CONFIG $(BOOTLOADER_ENV); \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ mrproper $(BOOTLOADER_ENV); \
-		$(MAKE) -C bootable/bootloader/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV) || exit 1; \
+		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ distclean $(BOOTLOADER_ENV); \
+		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $$UBOOT_CONFIG $(BOOTLOADER_ENV); \
+		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ mrproper $(BOOTLOADER_ENV); \
+		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV) || exit 1; \
 		install -D $(BOOTLOADER_OUT)/u-boot$(TARGET_DTB_POSTFIX).$(TARGET_BOOTLOADER_POSTFIX) $(PRODUCT_OUT)/u-boot-$$UBOOT_PLATFORM.imx; \
 		if [ $(UBOOT_POST_PROCESS) = true ]; then \
 		echo "build post process" ; \
@@ -1401,17 +1401,17 @@ KERNEL_ENV := ARCH=$(TARGET_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_TOOLCHAIN) LOADAD
 HOST_PROCESSOR := $(shell cat /proc/cpuinfo | grep processor | wc -l)
 INSTALLED_KERNEL_TARGET := $(KERNEL_OUT)/kernel_img
 TARGET_PREBUILT_KERNEL := $(KERNEL_OUT)/kernel_img
-KERNEL_CONFIGURE := kernel_imx/.config
+KERNEL_CONFIGURE := $(KERNEL_IMX_PATH)/kernel_imx/.config
 TARGET_KERNEL_CONFIGURE := $(KERNEL_OUT)/.config
 
 
 .PHONY: $(TARGET_PREBUILT_KERNEL)
 kernelimage: $(TARGET_PREBUILT_KERNEL)
 
-$(KERNEL_CONFIGURE): kernel_imx/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_DEFCONF)
+$(KERNEL_CONFIGURE): $(KERNEL_IMX_PATH)/kernel_imx/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_DEFCONF)
 
-$(TARGET_KERNEL_CONFIGURE): kernel_imx/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_DEFCONF) $(KERNEL_CONFIGURE)
-	$(MAKE) -C kernel_imx $(TARGET_KERNEL_DEFCONF) $(KERNEL_ENV)
+$(TARGET_KERNEL_CONFIGURE): $(KERNEL_IMX_PATH)/kernel_imx/arch/$(TARGET_ARCH)/configs/$(TARGET_KERNEL_DEFCONF) $(KERNEL_CONFIGURE)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx $(TARGET_KERNEL_DEFCONF) $(KERNEL_ENV)
 	install -D $(KERNEL_CONFIGURE) $(TARGET_KERNEL_CONFIGURE)
 
 ifeq ($(TARGET_ARCH),arm64)
@@ -1420,9 +1420,9 @@ else
 DTS_ADDITIONAL_PATH :=
 endif
 $(TARGET_PREBUILT_KERNEL): $(TARGET_KERNEL_CONFIGURE) | $(KERNEL_OUT)
-	$(MAKE) -C kernel_imx mrproper
-	$(MAKE) -C kernel_imx O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
-	$(MAKE) -C kernel_imx O=$(realpath $(KERNEL_OUT)) dtbs $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx mrproper
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) dtbs $(KERNEL_ENV)
 	install -D $(KERNEL_IMAGE_NAME)  $(KERNEL_OUT)/kernel_img
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
@@ -1447,7 +1447,7 @@ $(eval kernel_modules_dest_list += $(call append-path,$(PRODUCT_OUT),$(_dest))))
 ifneq ($(strip $(kernel_modules_src_list)),)
 
 kernelmodules: $(TARGET_PREBUILT_KERNEL) | $(ACP)
-	$(MAKE) -C kernel_imx modules $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx modules $(KERNEL_ENV)
 	$(hide) $(foreach cf, $(TARGET_KERNEL_MODULES),				\
 	$(eval _src := $(call word-colon,1,$(cf)))				\
 	$(eval _dest := $(call word-colon,2,$(cf)))				\
