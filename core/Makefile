@@ -2734,8 +2734,20 @@ endif
 	$(hide) find $(zip_root) -path $(zip_root)/META -prune -o -print | sort >>$@.list
 	$(hide) $(SOONG_ZIP) -d -o $@ -C $(zip_root) -l $@.list
 
+distgenerate: $(BUILT_TARGET_FILES_PACKAGE)
+
 .PHONY: target-files-package
 target-files-package: $(BUILT_TARGET_FILES_PACKAGE)
+	@echo "Package target file our:"
+	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
+		export DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
+		export BOARD_KERNEL_DTS="$(KERNEL_OUT)/$$DTS_BOARD" ; \
+		rm out/.lock ; \
+		make distgenerate ;\
+		DIST_PACKAGE_BOARD=$(patsubst %.zip,%-$$DTS_PLATFORM.zip,$(BUILT_TARGET_FILES_PACKAGE)); \
+		cp -f $(BUILT_TARGET_FILES_PACKAGE) $$DIST_PACKAGE_BOARD;\
+	done
 
 ifneq ($(filter $(MAKECMDGOALS),target-files-package),)
 $(call dist-for-goals, target-files-package, $(BUILT_TARGET_FILES_PACKAGE))
