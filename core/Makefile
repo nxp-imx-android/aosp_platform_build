@@ -1447,12 +1447,12 @@ $(eval kernel_modules_dest_list += $(call append-path,$(PRODUCT_OUT),$(_dest))))
 ifneq ($(strip $(kernel_modules_src_list)),)
 
 kernelmodules: $(TARGET_PREBUILT_KERNEL) | $(ACP)
-	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx modules $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) modules $(KERNEL_ENV)
 	$(hide) $(foreach cf, $(TARGET_KERNEL_MODULES),				\
 	$(eval _src := $(call word-colon,1,$(cf)))				\
 	$(eval _dest := $(call word-colon,2,$(cf)))				\
 	$(eval _full_dest := $(call append-path,$(PRODUCT_OUT),$(_dest)))	\
-	$(eval _dest_dir := $(call dir, $(_full_dest))) 			\
+	$(eval _dest_dir := $(dir $(_full_dest)))                               \
 	mkdir -p $(_dest_dir); 							\
 	$(ACP) $(_src) $(_full_dest);						\
 	)
