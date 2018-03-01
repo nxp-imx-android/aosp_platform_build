@@ -1410,10 +1410,10 @@ endif
 ifneq ($(strip $(TARGET_NO_KERNEL)),true)
 ifeq ($(TARGET_ARCH),arm64)
 KERNEL_CROSS_TOOLCHAIN := `pwd`/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9/bin/aarch64-linux-android-
-KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/Image
+KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/$(KERNEL_NAME)
 else
 KERNEL_CROSS_TOOLCHAIN := `pwd`/prebuilts/gcc/linux-x86/arm/arm-linux-androideabi-4.9/bin/arm-linux-androideabi-
-KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/zImage
+KERNEL_IMAGE_NAME    := $(KERNEL_OUT)/arch/$(TARGET_ARCH)/boot/$(KERNEL_NAME)
 endif
 KERNEL_CFLAGS := KCFLAGS=-mno-android
 KERNEL_ENV := ARCH=$(TARGET_ARCH) CROSS_COMPILE=$(KERNEL_CROSS_TOOLCHAIN) LOADADDR=$(LOAD_KERNEL_ENTRY) $(KERNEL_CFLAGS)
@@ -1440,7 +1440,7 @@ DTS_ADDITIONAL_PATH :=
 endif
 $(TARGET_PREBUILT_KERNEL): $(TARGET_KERNEL_CONFIGURE) | $(KERNEL_OUT)
 	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx mrproper
-	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx $(KERNEL_NAME) O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
 	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) dtbs $(KERNEL_ENV)
 	install -D $(KERNEL_IMAGE_NAME)  $(KERNEL_OUT)/kernel_img
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
