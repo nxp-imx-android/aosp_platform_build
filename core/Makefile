@@ -1441,6 +1441,7 @@ endif
 $(TARGET_PREBUILT_KERNEL): $(TARGET_KERNEL_CONFIGURE) | $(KERNEL_OUT)
 	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx mrproper
 	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx $(KERNEL_NAME) O=$(realpath $(KERNEL_OUT)) -j$(HOST_PROCESSOR) $(KERNEL_ENV)
+	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) modules -j$(HOST_PROCESSOR) $(KERNEL_ENV)
 	$(MAKE) -C $(KERNEL_IMX_PATH)/kernel_imx O=$(realpath $(KERNEL_OUT)) dtbs $(KERNEL_ENV)
 	install -D $(KERNEL_IMAGE_NAME)  $(KERNEL_OUT)/kernel_img
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
