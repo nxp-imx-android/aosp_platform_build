@@ -659,13 +659,19 @@ else ifeq (true,$(BOARD_AVB_ENABLE)) # TARGET_BOOTIMAGE_USE_EXT2 != true
 
 $(INSTALLED_BOOTIMAGE_TARGET): $(MKBOOTIMG) $(AVBTOOL) $(INTERNAL_BOOTIMAGE_FILES) $(BOARD_AVB_BOOT_KEY_PATH)
 	$(call pretty,"Target boot image: $@")
-	$(hide) $(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) $(INTERNAL_MKBOOTIMG_VERSION_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@
-	$(hide) $(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE))
-	$(hide) $(AVBTOOL) add_hash_footer \
-	  --image $@ \
-	  --partition_size $(BOARD_BOOTIMAGE_PARTITION_SIZE) \
-	  --partition_name boot $(INTERNAL_AVB_BOOT_SIGNING_ARGS) \
-	  $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS)
+	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
+		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		DTS_BOARD=`echo $$dtsplat | cut -d':' -f2`; \
+		BOOT_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
+		$(MKBOOTIMG) $(INTERNAL_BOOTIMAGE_ARGS) --second $(KERNEL_OUT)/$$DTS_BOARD $(INTERNAL_MKBOOTIMG_VERSION_ARGS) $(BOARD_MKBOOTIMG_ARGS) --output $@; \
+		$(AVBTOOL) add_hash_footer \
+		  --image $@ \
+		  --partition_size $(BOARD_BOOTIMAGE_PARTITION_SIZE) \
+		  --partition_name boot $(INTERNAL_AVB_BOOT_SIGNING_ARGS) \
+		  $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS); \
+		$(call assert-max-image-size,$@,$(BOARD_BOOTIMAGE_PARTITION_SIZE)); \
+		cp -f $@ $$BOOT_IMAGE_BOARD; \
+	done
 
 .PHONY: bootimage-nodeps
 bootimage-nodeps: $(MKBOOTIMG) $(AVBTOOL) $(BOARD_AVB_BOOT_KEY_PATH)
@@ -1288,7 +1294,12 @@ define build-recoveryimage-target
           --partition_size $(BOARD_BOOTIMAGE_PARTITION_SIZE) \
           --partition_name boot $(INTERNAL_AVB_BOOT_SIGNING_ARGS) \
           $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS), \
-       @echo "BOARD_USES_RECOVERY_AS_BOOT and BOARD_AVB_ENABLE are not enabled" ); \
+       $(if $(filter true,$(BOARD_AVB_ENABLE)), \
+          $(AVBTOOL) add_hash_footer \
+             --image $(1) \
+	     --partition_size $(BOARD_RECOVERYIMAGE_PARTITION_SIZE) \
+	     --partition_name recovery $(INTERNAL_AVB_BOOT_SIGNING_ARGS) \
+	     $(BOARD_AVB_BOOT_ADD_HASH_FOOTER_ARGS))); \
     $(if $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)), \
       $(hide) $(call assert-max-image-size,$(1),$(BOARD_BOOTIMAGE_PARTITION_SIZE)), \
       $(hide) $(call assert-max-image-size,$(1),$(BOARD_RECOVERYIMAGE_PARTITION_SIZE))); \
@@ -2185,11 +2196,18 @@ $(INSTALLED_VBMETAIMAGE_TARGET): $(AVBTOOL) $(INSTALLED_BOOTIMAGE_TARGET) $(INST
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
 		VBMETA_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
-		$(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
-		  $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
-		  $(INTERNAL_AVB_SIGNING_ARGS) \
-		  $(BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS) \
-		  --output $$VBMETA_IMAGE_BOARD ;\
+		$(if $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)), \
+                   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		     $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		     $(INTERNAL_AVB_SIGNING_ARGS) \
+		     $(BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		     --output $$VBMETA_IMAGE_BOARD, \
+                   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		     --include_descriptors_from_image $(PRODUCT_OUT)/recovery-$$DTS_PLATFORM.img \
+		     $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		     $(INTERNAL_AVB_SIGNING_ARGS) \
+		     $(BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS) \
+		     --output $$VBMETA_IMAGE_BOARD); \
 	done
 
 .PHONY: vbmetaimage-nodeps
