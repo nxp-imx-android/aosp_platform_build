@@ -85,6 +85,7 @@ $(SOONG_VARIABLES): FORCE
 	echo '    "UseSwOpengl": $(if $(filter false,$(HAVE_FSL_IMX_GPU3D)),true,false),'; \
 	echo '    "Hantro_vpu": $(if $(filter hantro,$(BOARD_VPU_TYPE)),true,false),'; \
 	echo '    "Chipsmedia_vpu": $(if $(filter chipsmedia,$(BOARD_VPU_TYPE)),true,false),'; \
+	echo '    "Malone_vpu": $(if $(filter malone,$(BOARD_VPU_TYPE)),true,false),'; \
 	echo '    "Imx6dq_soc": $(if $(filter IMX6DQ,$(BOARD_SOC_TYPE)),true,false),'; \
 	echo '    "Treble": $(if $(filter true,$(PRODUCT_FULL_TREBLE)),true,false),'; \
 	echo '    "Pdk": $(if $(filter true,$(TARGET_BUILD_PDK)),true,false),'; \
