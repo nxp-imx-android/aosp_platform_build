@@ -2507,6 +2507,9 @@ endif
 ifdef BOARD_KERNEL_BASE
 	$(hide) echo "$(BOARD_KERNEL_BASE)" > $(zip_root)/$(PRIVATE_RECOVERY_OUT)/base
 endif
+ifdef BOARD_KERNEL_DTS
+	$(hide) echo "$(BOARD_KERNEL_DTS)" > $(zip_root)/$(PRIVATE_RECOVERY_OUT)/dtb
+endif
 ifdef BOARD_KERNEL_PAGESIZE
 	$(hide) echo "$(BOARD_KERNEL_PAGESIZE)" > $(zip_root)/$(PRIVATE_RECOVERY_OUT)/pagesize
 endif
