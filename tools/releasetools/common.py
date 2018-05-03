@@ -31,7 +31,7 @@ import tempfile
 import threading
 import time
 import zipfile
-import hashlib
+from hashlib import sha1, sha256
 
 import blockimgdiff
 
@@ -374,7 +374,7 @@ def AppendAVBSigningArgs(cmd, partition):
 
 
 def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
-                        has_ramdisk=False, two_step_image=False):
+                        has_ramdisk=False, two_step_image=False, image_name=None):
   """Build a bootable image from the specified sourcedir.
 
   Take a kernel, cmdline, and optionally a ramdisk directory from the input (in
@@ -515,10 +515,17 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
   # AVB: if enabled, calculate and add hash to boot.img.
   if info_dict.get("avb_enable") == "true":
     avbtool = os.getenv('AVBTOOL') or info_dict["avb_avbtool"]
-    part_size = info_dict["boot_size"]
-    cmd = [avbtool, "add_hash_footer", "--image", img.name,
-           "--partition_size", str(part_size), "--partition_name", "boot"]
-    AppendAVBSigningArgs(cmd, "boot")
+    if image_name == "boot.img":
+      part_size = info_dict["boot_size"]
+      cmd = [avbtool, "add_hash_footer", "--image", img.name,
+             "--partition_size", str(part_size), "--partition_name", "boot"]
+      AppendAVBSigningArgs(cmd, "boot")
+    elif image_name == "recovery.img":
+      part_size = info_dict["recovery_size"]
+      cmd = [avbtool, "add_hash_footer", "--image", img.name,
+             "--partition_size", str(part_size), "--partition_name", "recovery"]
+      AppendAVBSigningArgs(cmd, "recovery")
+
     args = info_dict.get("avb_boot_add_hash_footer_args")
     if args and args.strip():
       cmd.extend(shlex.split(args))
@@ -570,7 +577,7 @@ def GetBootableImage(name, prebuilt_name, unpack_dir, tree_subdir,
   fs_config = "META/" + tree_subdir.lower() + "_filesystem_config.txt"
   data = _BuildBootableImage(os.path.join(unpack_dir, tree_subdir),
                              os.path.join(unpack_dir, fs_config),
-                             info_dict, has_ramdisk, two_step_image)
+                             info_dict, has_ramdisk, two_step_image, prebuilt_name)
   if data:
     return File(name, data)
   return None
