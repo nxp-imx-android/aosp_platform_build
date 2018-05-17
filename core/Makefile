@@ -1388,7 +1388,7 @@ $(TARGET_BOOTLOADER_IMAGE): $(BOOTLOADER_OUT) $(TARGET_OPTEE)
 	for ubootplat in $(TARGET_BOOTLOADER_CONFIG); do \
 		UBOOT_PLATFORM=`echo $$ubootplat | cut -d':' -f1`; \
 		UBOOT_CONFIG=`echo $$ubootplat | cut -d':' -f2`; \
-		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ distclean $(BOOTLOADER_ENV); \
+		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) distclean $(BOOTLOADER_ENV); \
 		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $$UBOOT_CONFIG $(BOOTLOADER_ENV); \
 		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ mrproper $(BOOTLOADER_ENV); \
 		$(MAKE) -C $(UBOOT_IMX_PATH)/uboot-imx/ O=$(realpath $(BOOTLOADER_OUT)) $(BOOTLOADER_ENV) || exit 1; \
