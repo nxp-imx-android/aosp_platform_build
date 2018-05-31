@@ -383,7 +383,8 @@ def AddVBMeta(output_zip, boot_img_path, recovery_img_path, system_img_path, ven
   public_key_dir = tempfile.mkdtemp(prefix="avbpubkey-")
   OPTIONS.tempfiles.append(public_key_dir)
 
-  AppendVBMetaArgsForPartition(cmd, "recovery", recovery_img_path, public_key_dir)
+  if recovery_img_path != None:
+    AppendVBMetaArgsForPartition(cmd, "recovery", recovery_img_path, public_key_dir)
   AppendVBMetaArgsForPartition(cmd, "boot", boot_img_path, public_key_dir)
   AppendVBMetaArgsForPartition(cmd, "system", system_img_path, public_key_dir)
   AppendVBMetaArgsForPartition(cmd, "vendor", vendor_img_path, public_key_dir)
@@ -626,9 +627,13 @@ def AddImagesToTargetFiles(filename):
   if OPTIONS.info_dict.get("avb_enable") == "true":
     banner("vbmeta")
     boot_contents = boot_image.WriteToTemp()
-    recovery_contents = recovery_image.WriteToTemp()
-    AddVBMeta(output_zip, boot_contents.name, recovery_contents.name, system_img_path,
-              vendor_img_path, dtbo_img_path)
+    if recovery_image != None:
+      recovery_contents = recovery_image.WriteToTemp()
+      AddVBMeta(output_zip, boot_contents.name, recovery_contents.name, system_img_path,
+                vendor_img_path, dtbo_img_path)
+    else:
+      AddVBMeta(output_zip, boot_contents.name, None, system_img_path,
+                vendor_img_path, dtbo_img_path)
 
   # For devices using A/B update, copy over images from RADIO/ and/or
   # VENDOR_IMAGES/ to IMAGES/ and make sure we have all the needed
