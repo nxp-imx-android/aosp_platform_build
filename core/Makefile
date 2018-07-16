@@ -1242,8 +1242,12 @@ define build-recoveryimage-target
   $(hide) rm -f $(TARGET_RECOVERY_ROOT_OUT)/init*.rc
   $(hide) cp -f $(recovery_initrc) $(TARGET_RECOVERY_ROOT_OUT)/
   $(hide) cp $(TARGET_ROOT_OUT)/init.recovery.*.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
-  $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).sd.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
-  $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).emmc.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true # Ignore error when the src file doesn't exist.
+  $(if $(filter true,$(PRODUCT_IMX_CAR)), \
+    $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).sd.default.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true; \
+            cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).emmc.default.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true, \
+    $(hide) cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).sd.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true; \
+            cp $(TARGET_ROOT_OUT)/init.$(PRODUCT_MANUFACTURER).emmc.rc $(TARGET_RECOVERY_ROOT_OUT)/ || true)
+
   $(hide) mkdir -p $(TARGET_RECOVERY_ROOT_OUT)/res
   $(hide) rm -rf $(TARGET_RECOVERY_ROOT_OUT)/res/*
   $(hide) cp -rf $(recovery_resources_common)/* $(TARGET_RECOVERY_ROOT_OUT)/res
