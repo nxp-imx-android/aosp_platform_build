@@ -762,7 +762,9 @@ def main(argv):
   else:
     image_filename = os.path.basename(out_file)
     mount_point = ""
-    if image_filename == "system.img":
+    if image_filename == "system_ext4.img":
+      mount_point = "system"
+    elif image_filename == "system_squashfs.img":
       mount_point = "system"
     elif image_filename == "system_other.img":
       mount_point = "system_other"

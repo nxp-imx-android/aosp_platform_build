@@ -1009,7 +1009,7 @@ define generate-userimage-prop-dictionary
 $(hide) echo "ext_mkuserimg=$(notdir $(MKEXTUSERIMG))" >> $(1)
 $(if $(INTERNAL_USERIMAGES_EXT_VARIANT),$(hide) echo "fs_type=$(INTERNAL_USERIMAGES_EXT_VARIANT)" >> $(1))
 $(if $(BOARD_SYSTEMIMAGE_PARTITION_SIZE),$(hide) echo "system_size=$(BOARD_SYSTEMIMAGE_PARTITION_SIZE)" >> $(1))
-$(if $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),$(hide) echo "system_fs_type=$(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE)" >> $(1))
+$(if $(3),$(hide) echo "system_fs_type=$(3)" >> $(1))
 $(if $(BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT),$(hide) echo "system_extfs_inode_count=$(BOARD_SYSTEMIMAGE_EXTFS_INODE_COUNT)" >> $(1))
 $(if $(BOARD_SYSTEMIMAGE_JOURNAL_SIZE),$(hide) echo "system_journal_size=$(BOARD_SYSTEMIMAGE_JOURNAL_SIZE)" >> $(1))
 $(if $(BOARD_HAS_EXT4_RESERVED_BLOCKS),$(hide) echo "has_ext4_reserved_blocks=$(BOARD_HAS_EXT4_RESERVED_BLOCKS)" >> $(1))
@@ -1552,7 +1552,10 @@ $(call dist-for-goals, sdk win_sdk sdk_addon, $(INSTALLED_FILES_FILE))
 
 systemimage_intermediates := \
     $(call intermediates-dir-for,PACKAGING,systemimage)
-BUILT_SYSTEMIMAGE := $(systemimage_intermediates)/system.img
+BUILT_SYSTEMIMAGE_EXT4 := $(systemimage_intermediates)/system_ext4.img
+ifneq ($(filter $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE) $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),squashfs),)
+BUILT_SYSTEMIMAGE_SQUASHFS := $(systemimage_intermediates)/system_squashfs.img
+endif
 
 # Create symlink /system/vendor to /vendor if necessary.
 ifdef BOARD_USES_VENDORIMAGE
@@ -1562,7 +1565,9 @@ $(hide) if [ -d $(TARGET_OUT)/vendor ] && [ ! -h $(TARGET_OUT)/vendor ]; then \
   echo 'You cannot install files to $(TARGET_OUT)/vendor while building a separate vendor.img!' 1>&2; \
   exit 1; \
 fi
-$(hide) ln -sf /vendor $(TARGET_OUT)/vendor
+$(hide)	if [ ! -h $(TARGET_OUT)/vendor ]; then \
+ln -sf /vendor $(TARGET_OUT)/vendor; \
+fi
 endef
 else
 define create-system-vendor-symlink
@@ -1573,12 +1578,12 @@ endif
 define build-systemimage-target
   @echo "Target system fs image: $(1)"
   $(call create-system-vendor-symlink)
-  @mkdir -p $(dir $(1)) $(systemimage_intermediates) && rm -rf $(systemimage_intermediates)/system_image_info.txt
-  $(call generate-userimage-prop-dictionary, $(systemimage_intermediates)/system_image_info.txt, \
-      skip_fsck=true)
+  @mkdir -p $(dir $(1)) $(systemimage_intermediates) && rm -rf $(systemimage_intermediates)/$(3)
+  $(call generate-userimage-prop-dictionary, $(systemimage_intermediates)/$(3), \
+      skip_fsck=true,$(2))
   $(hide) PATH=$(foreach p,$(INTERNAL_USERIMAGES_BINARY_PATHS),$(p):)$$PATH \
       ./build/tools/releasetools/build_image.py \
-      $(TARGET_OUT) $(systemimage_intermediates)/system_image_info.txt $(1) $(TARGET_OUT) \
+      $(TARGET_OUT) $(systemimage_intermediates)/$(3) $(1) $(TARGET_OUT) \
       || ( echo "Out of space? the tree size of $(TARGET_OUT) is (MB): " 1>&2 ;\
            du -sm $(TARGET_OUT) 1>&2;\
            if [ "$(INTERNAL_USERIMAGES_EXT_VARIANT)" == "ext4" ]; then \
@@ -1594,10 +1599,17 @@ define build-systemimage-target
            exit 1 )
 endef
 
-$(BUILT_SYSTEMIMAGE): $(FULL_SYSTEMIMAGE_DEPS) $(INSTALLED_FILES_FILE) $(BUILD_IMAGE_SRCS)
-	$(call build-systemimage-target,$@)
+$(BUILT_SYSTEMIMAGE_EXT4): $(FULL_SYSTEMIMAGE_DEPS) $(INSTALLED_FILES_FILE) $(BUILD_IMAGE_SRCS)
+	$(call build-systemimage-target,$@,ext4,system_image_info_ext4.txt)
+
+ifneq ($(filter $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE) $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),squashfs),)
+$(BUILT_SYSTEMIMAGE_SQUASHFS): $(FULL_SYSTEMIMAGE_DEPS) $(INSTALLED_FILES_FILE) $(BUILD_IMAGE_SRCS)
+	$(call build-systemimage-target,$@,squashfs,system_image_info_squashfs.txt)
+endif
 
 INSTALLED_SYSTEMIMAGE := $(PRODUCT_OUT)/system.img
+INSTALLED_SYSTEMIMAGE_EXT4 := $(PRODUCT_OUT)/system_ext4.img
+INSTALLED_SYSTEMIMAGE_SQUASHFS := $(PRODUCT_OUT)/system_squashfs.img
 SYSTEMIMAGE_SOURCE_DIR := $(TARGET_OUT)
 
 # The system partition needs room for the recovery image as well.  We
@@ -1622,12 +1634,36 @@ endif
 endif
 
 
-$(INSTALLED_SYSTEMIMAGE): $(BUILT_SYSTEMIMAGE) $(RECOVERY_FROM_BOOT_PATCH)
+$(INSTALLED_SYSTEMIMAGE_EXT4): $(BUILT_SYSTEMIMAGE_EXT4) $(RECOVERY_FROM_BOOT_PATCH)
 	@echo "Install system fs image: $@"
 	$(copy-file-to-target)
 	$(hide) $(call assert-max-image-size,$@ $(RECOVERY_FROM_BOOT_PATCH),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
 
+ifneq ($(filter $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE) $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),squashfs),)
+$(INSTALLED_SYSTEMIMAGE_SQUASHFS): $(BUILT_SYSTEMIMAGE_SQUASHFS) $(RECOVERY_FROM_BOOT_PATCH)
+	@echo "Install system fs image: $@"
+	$(copy-file-to-target)
+	$(hide) $(call assert-max-image-size,$@ $(RECOVERY_FROM_BOOT_PATCH),$(BOARD_SYSTEMIMAGE_PARTITION_SIZE))
+endif
+
 systemimage: $(INSTALLED_SYSTEMIMAGE)
+
+ifneq ($(filter $(BOARD_VENDORIMAGE_FILE_SYSTEM_TYPE) $(BOARD_SYSTEMIMAGE_FILE_SYSTEM_TYPE),squashfs),)
+$(INSTALLED_SYSTEMIMAGE): $(INSTALLED_SYSTEMIMAGE_EXT4) $(INSTALLED_SYSTEMIMAGE_SQUASHFS)
+	$(call pretty,"Rename system image: $@")
+	@rm -f $(INSTALLED_SYSTEMIMAGE)
+	for dtsplat in $(TARGET_BOARD_IMAGE_FORMAT); do \
+		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		SYSTEM_TYPE=`echo $$dtsplat | cut -d':' -f2`; \
+		SYSTEM_IMAGE_BOARD=`echo $(patsubst %.img,%-$$DTS_PLATFORM.img,$@)`; \
+		mv $(PRODUCT_OUT)/system_$$SYSTEM_TYPE.img $$SYSTEM_IMAGE_BOARD; \
+	done
+else
+$(INSTALLED_SYSTEMIMAGE): $(INSTALLED_SYSTEMIMAGE_EXT4)
+	$(call pretty,"Rename system image: $@")
+	@rm -f $(INSTALLED_SYSTEMIMAGE)
+	mv  $(INSTALLED_SYSTEMIMAGE_EXT4) $(INSTALLED_SYSTEMIMAGE)
+endif
 
 .PHONY: systemimage-nodeps snod
 systemimage-nodeps snod: $(filter-out systemimage-nodeps snod,$(MAKECMDGOALS)) \
@@ -2131,9 +2167,6 @@ endif
 
 ifdef BOARD_AVB_SYSTEM_KEY_PATH
 $(eval $(call check-and-set-avb-chain-args,SYSTEM))
-else
-INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS += \
-    --include_descriptors_from_image $(INSTALLED_SYSTEMIMAGE)
 endif
 
 ifdef INSTALLED_VENDORIMAGE_TARGET
@@ -2211,14 +2244,17 @@ $(INSTALLED_VBMETAIMAGE_TARGET): $(AVBTOOL) $(INSTALLED_BOOTIMAGE_TARGET) $(INST
 	$(call pretty,"Target vbmeta image: $@")
 	for dtsplat in $(TARGET_BOARD_DTS_CONFIG); do \
 		DTS_PLATFORM=`echo $$dtsplat | cut -d':' -f1`; \
+		$(if $(TARGET_BOARD_IMAGE_FORMAT), FILESYSTEM_TYPE=-$$DTS_PLATFORM, FILESYSTEM_TYPE=''); \
 		VBMETA_IMAGE_BOARD=$(patsubst %.img,%-$$DTS_PLATFORM.img,$@); \
 		$(if $(filter true,$(BOARD_USES_RECOVERY_AS_BOOT)), \
-                   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		     --include_descriptors_from_image $(PRODUCT_OUT)/system$$FILESYSTEM_TYPE.img \
 		     $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
 		     $(INTERNAL_AVB_SIGNING_ARGS) \
 		     $(BOARD_AVB_MAKE_VBMETA_IMAGE_ARGS) \
 		     --output $$VBMETA_IMAGE_BOARD, \
-                   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		   $(AVBTOOL) make_vbmeta_image --include_descriptors_from_image $(PRODUCT_OUT)/boot-$$DTS_PLATFORM.img \
+		     --include_descriptors_from_image $(PRODUCT_OUT)/system$$FILESYSTEM_TYPE.img \
 		     --include_descriptors_from_image $(PRODUCT_OUT)/recovery-$$DTS_PLATFORM.img \
 		     $(INTERNAL_AVB_MAKE_VBMETA_IMAGE_ARGS) \
 		     $(INTERNAL_AVB_SIGNING_ARGS) \
