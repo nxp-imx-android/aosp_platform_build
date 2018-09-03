@@ -82,6 +82,11 @@ $(SOONG_VARIABLES): FORCE
 	echo '    "IntegerOverflowExcludePaths": $(call json_list,$(INTEGER_OVERFLOW_EXCLUDE_PATHS) $(PRODUCT_INTEGER_OVERFLOW_EXCLUDE_PATHS)),'; \
 	echo '    "Device_uses_hwc2": $(if $(filter true,$(TARGET_USES_HWC2)),true,false),'; \
 	echo '    "Override_rs_driver": "$(OVERRIDE_RS_DRIVER)",'; \
+	echo '    "UseSwOpengl": $(if $(filter false,$(HAVE_FSL_IMX_GPU3D)),true,false),'; \
+	echo '    "Hantro_vpu": $(if $(filter hantro,$(BOARD_VPU_TYPE)),true,false),'; \
+	echo '    "Chipsmedia_vpu": $(if $(filter chipsmedia,$(BOARD_VPU_TYPE)),true,false),'; \
+	echo '    "Malone_vpu": $(if $(filter malone,$(BOARD_VPU_TYPE)),true,false),'; \
+	echo '    "Imx6dq_soc": $(if $(filter IMX6DQ,$(BOARD_SOC_TYPE)),true,false),'; \
 	echo '    "Treble": $(if $(filter true,$(PRODUCT_FULL_TREBLE)),true,false),'; \
 	echo '    "Pdk": $(if $(filter true,$(TARGET_BUILD_PDK)),true,false),'; \
 	echo ''; \
