@@ -143,6 +143,12 @@ $(call add_json_list, NamespacesToExport,                $(PRODUCT_SOONG_NAMESPA
 
 $(call add_json_list, PgoAdditionalProfileDirs,          $(PGO_ADDITIONAL_PROFILE_DIRS))
 
+$(call add_json_bool, UseSwOpengl,                       $(filter false,$(HAVE_FSL_IMX_GPU3D)))
+$(call add_json_bool, Imx6dq_soc,                        $(filter IMX6DQ,$(BOARD_SOC_TYPE)))
+$(call add_json_bool, Hantro_vpu,                        $(filter hantro,$(BOARD_VPU_TYPE)))
+$(call add_json_bool, Chipsmedia_vpu,                    $(filter chipsmedia,$(BOARD_VPU_TYPE)))
+$(call add_json_bool, Malone_vpu,                        $(filter malone,$(BOARD_VPU_TYPE)))
+
 _contents := $(_contents)    "VendorVars": {$(newline)
 $(foreach namespace,$(SOONG_CONFIG_NAMESPACES),\
   $(eval _contents := $$(_contents)        "$(namespace)": {$$(newline)) \
