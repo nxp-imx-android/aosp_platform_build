@@ -1595,6 +1595,10 @@ recovery_density := $(strip \
        $(if $(filter $(shell echo $$(($(recovery_density_value) >= 200))),1),hdpi,mdpi)))
 endif
 
+ifneq (,$(PRODUCT_CUSTOM_RECOVERY_DENSITY))
+recovery_density := $(filter %dpi,$(PRODUCT_CUSTOM_RECOVERY_DENSITY))
+endif
+
 ifneq (,$(wildcard $(recovery_resources_common)-$(recovery_density)))
 recovery_resources_common := $(recovery_resources_common)-$(recovery_density)
 else
