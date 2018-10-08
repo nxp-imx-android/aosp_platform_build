@@ -1087,6 +1087,10 @@ else
 recovery_densities := mdpi
 endif
 
+ifneq (,$(PRODUCT_CUSTOM_RECOVERY_DENSITY))
+recovery_density := $(filter %dpi,$(PRODUCT_CUSTOM_RECOVERY_DENSITY))
+endif
+
 ifneq (,$(wildcard $(recovery_resources_common)-$(recovery_density)))
 recovery_resources_common := $(recovery_resources_common)-$(recovery_density)
 else
