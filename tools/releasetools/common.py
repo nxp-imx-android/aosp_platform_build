@@ -414,6 +414,14 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
   if has_ramdisk:
     ramdisk_img = make_ramdisk()
 
+  partition_name = os.path.basename(sourcedir).lower()
+  avbtool = os.getenv('AVBTOOL') or info_dict["avb_avbtool"]
+  if (partition_name == "recovery" and
+      info_dict.get("include_recovery_dtbo") == "true"):
+    cmd = [avbtool, "erase_footer", "--image", os.path.join(sourcedir, "recovery_dtbo")]
+    p = Run(cmd, stdout=subprocess.PIPE)
+    p.communicate()
+
   # use MKBOOTIMG from environ, or "mkbootimg" if empty or not set
   mkbootimg = os.getenv('MKBOOTIMG') or "mkbootimg"
 
@@ -458,8 +466,6 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
     cmd.extend(["--output", img.name])
 
   # "boot" or "recovery", without extension.
-  partition_name = os.path.basename(sourcedir).lower()
-
   if (partition_name == "recovery" and
       info_dict.get("include_recovery_dtbo") == "true"):
     fn = os.path.join(sourcedir, "recovery_dtbo")
@@ -512,7 +518,6 @@ def _BuildBootableImage(sourcedir, fs_config_file, info_dict=None,
 
   # AVB: if enabled, calculate and add hash to boot.img or recovery.img.
   if info_dict.get("avb_enable") == "true":
-    avbtool = os.getenv('AVBTOOL') or info_dict["avb_avbtool"]
     part_size = info_dict[partition_name + "_size"]
     cmd = [avbtool, "add_hash_footer", "--image", img.name,
            "--partition_size", str(part_size), "--partition_name",
