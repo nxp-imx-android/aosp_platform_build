@@ -952,6 +952,8 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
     system_progress -= 0.1
   if HasVendorPartition(input_zip):
     system_progress -= 0.1
+  if HasProductPartition(input_zip):
+    system_progress -= 0.1
 
   script.ShowProgress(system_progress, 0)
 
@@ -978,6 +980,9 @@ else if get_stage("%(bcb_dev)s") == "3/3" then
   if HasVendorPartition(input_zip):
     block_diffs.append(GetBlockDifference("vendor"))
     progress_dict["vendor"] = 0.1
+  if HasProductPartition(input_zip):
+     block_diffs.append(GetBlockDifference("product"))
+     progress_dict["product"] = 0.1
   if device_specific_diffs:
     block_diffs += device_specific_diffs
 
@@ -1627,6 +1632,32 @@ def WriteBlockIncrementalOTAPackage(target_zip, source_zip, output_file):
   else:
     vendor_diff = None
 
+  if HasProductPartition(target_zip):
+    if not HasProductPartition(source_zip):
+      raise RuntimeError("can't generate incremental that adds /product")
+    product_src = common.GetUserImage("product", OPTIONS.source_tmp, source_zip,
+                                     info_dict=source_info,
+                                     allow_shared_blocks=allow_shared_blocks)
+    hashtree_info_generator = verity_utils.CreateHashtreeInfoGenerator(
+        "product", 4096, target_info)
+    product_tgt = common.GetUserImage(
+        "product", OPTIONS.target_tmp, target_zip,
+        info_dict=target_info,
+        allow_shared_blocks=allow_shared_blocks,
+        hashtree_info_generator=hashtree_info_generator)
+
+    # Check first block of product partition for remount R/W only if
+    # disk type is ext4
+    product_partition = source_info["fstab"]["/product"]
+    check_first_block = product_partition.fs_type == "ext4"
+    disable_imgdiff = product_partition.fs_type == "squashfs"
+    product_diff = common.BlockDifference("product", product_tgt, product_src,
+                                         check_first_block,
+                                         version=blockimgdiff_version,
+                                         disable_imgdiff=disable_imgdiff)
+  else:
+    product_diff = None
+
   AddCompatibilityArchiveIfTrebleEnabled(
       target_zip, output_zip, target_info, source_info)
 
@@ -1697,6 +1728,8 @@ else if get_stage("%(bcb_dev)s") != "3/3" then
     size.append(system_diff.required_cache)
   if vendor_diff:
     size.append(vendor_diff.required_cache)
+  if product_diff:
+    size.append(product_diff.required_cache)
 
   if updating_boot:
     boot_type, boot_device = common.GetTypeAndDevice("/boot", source_info)
@@ -1744,6 +1777,9 @@ else
   system_diff.WriteVerifyScript(script, touched_blocks_only=True)
   if vendor_diff:
     vendor_diff.WriteVerifyScript(script, touched_blocks_only=True)
+  if product_diff:
+    product_diff.WriteVerifyScript(script, touched_blocks_only=True)
+
   device_specific_diffs = device_specific.IncrementalOTA_GetBlockDifferences()
   if device_specific_diffs:
     assert all(isinstance(diff, common.BlockDifference)
@@ -1758,10 +1794,14 @@ else
   device_specific.IncrementalOTA_InstallBegin()
 
   block_diffs = [system_diff]
-  progress_dict = {"system": 0.8 if vendor_diff else 0.9}
+  progress_dict = {"system": 0.7 if vendor_diff and product_diff else 0.8 if vendor_diff or product_diff else 0.9}
   if vendor_diff:
     block_diffs.append(vendor_diff)
     progress_dict["vendor"] = 0.1
+  if product_diff:
+    block_diffs.append(product_diff)
+    progress_dict["product"] = 0.1
+
   if device_specific_diffs:
     block_diffs += device_specific_diffs
 
